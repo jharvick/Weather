@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Forecast</title>
+</head>
+<body>
+    <h1>Weather Forecast</h1>
+    <label for="citySelect">Select a city:</label>
+    <select id="citySelect">
+        <option value="">Select a city</option>
+        <!-- Dropdown options will be populated dynamically with JavaScript -->
+    </select>
+
+    <table id="weatherTable">
+        <thead>
+            <tr>
+                <th>Date/Time</th>
+                <th>Temperature (&deg;F)</th>
+                <th>Wind Conditions</th>
+                <th>Forecast</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Table rows will be populated dynamically with JavaScript -->
+        </tbody>
+    </table>
+
+    <script src="cities.js"></script>
+    <script>
+        let citySelect = document.getElementById('citySelect');
+        cities.forEach(city => {
+            let option = document.createElement('option');
+            option.value = `${city.latitude},${city.longitude}`;
+            option.textContent = city.name;
+            citySelect.appendChild(option);
+        });
+
+        citySelect.addEventListener('change', handleCityChange);
+
+        function handleCityChange() {
+            let selectedCityName = citySelect.options[citySelect.selectedIndex].textContent;
+            let selectedCity = cities.find(city => city.name === selectedCityName);
+            if (selectedCity) {
+                let stationLookupUrl = `https://api.weather.gov/points/${selectedCity.latitude},${selectedCity.longitude}`;
+                fetch(stationLookupUrl)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Failed to retrieve station data');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        let forecastUrl = data.properties.forecast;
+                        getWeather(forecastUrl);
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                    });
+            } else {
+                console.error('City not found');
+            }
+        }
+
+        function getWeather(forecastUrl) {
+            fetch(forecastUrl)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to retrieve forecast data');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    let forecastArray = data.properties.periods;
+                    let weatherTable = document.getElementById('weatherTable');
+                    let tbody = weatherTable.querySelector('tbody');
+                    tbody.innerHTML = '';
+                    forecastArray.forEach(period => {
+                        let row = document.createElement('tr');
+
+                        let nameCell = document.createElement('td');
+                        nameCell.textContent = period.name;
+                        row.appendChild(nameCell);
+
+                        let temperatureCell = document.createElement('td');
+                        temperatureCell.textContent = "Temperature: " + period.temperature + " " + period.temperatureUnit;
+                        row.appendChild(temperatureCell);
+
+                        let windCell = document.createElement('td');
+                        windCell.textContent = "Winds: " + period.windDirection + " " + period.windSpeed;
+                        row.appendChild(windCell);
+
+                        let conditionsCell = document.createElement('td');
+                        conditionsCell.textContent = period.shortForecast;
+                        row.appendChild(conditionsCell);
+
+                        tbody.appendChild(row);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+        }
+
+    </script>
+</body>
+</html>
